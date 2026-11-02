@@ -1,0 +1,123 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 0: Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Hardened Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    // Entity Validation Blueprint: RecordItem
+    function isValidRecordItem(data) {
+      return data.keys().hasAll([
+          'title',
+          'code',
+          'category',
+          'status',
+          'priority',
+          'amount',
+          'notes',
+          'ownerId',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'title',
+          'code',
+          'category',
+          'status',
+          'priority',
+          'amount',
+          'notes',
+          'ownerId',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 120
+        && data.code is string && data.code.size() >= 1 && data.code.size() <= 32 && data.code.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.category is string && data.category.size() <= 32 && data.category in ['Inventario', 'Clientes', 'Finanzas', 'Proyectos', 'Operaciones']
+        && data.status is string && data.status.size() <= 32 && data.status in ['Activo', 'En Revision', 'Completado', 'Archivado']
+        && data.priority is string && data.priority.size() <= 16 && data.priority in ['Alta', 'Media', 'Baja']
+        && data.amount is number && data.amount >= -1000000000 && data.amount <= 1000000000
+        && data.notes is string && data.notes.size() >= 0 && data.notes.size() <= 500
+        && data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId == request.auth.uid
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isRecordOwner() {
+      return existing().ownerId == request.auth.uid;
+    }
+
+    function isImmutableRecordIdentity() {
+      return incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+    }
+
+    function isNotTerminalArchived() {
+      return existing().status != 'Archivado';
+    }
+
+    function isStatusTransitionAction() {
+      return incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+    }
+
+    function isFullRecordUpdateAction() {
+      return incoming().diff(existing()).affectedKeys().hasOnly([
+        'title',
+        'code',
+        'category',
+        'status',
+        'priority',
+        'amount',
+        'notes',
+        'updatedAt'
+      ]);
+    }
+
+    // Collection: /records/{recordId}
+    match /records/{recordId} {
+      allow get: if isSignedIn() && isValidId(recordId) && isRecordOwner();
+      allow list: if isSignedIn() && isRecordOwner();
+      allow create: if isVerifiedUser()
+        && isValidId(recordId)
+        && isValidRecordItem(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(recordId)
+        && isValidRecordItem(incoming())
+        && isRecordOwner()
+        && isImmutableRecordIdentity()
+        && isNotTerminalArchived()
+        && (
+          isStatusTransitionAction()
+          || isFullRecordUpdateAction()
+        );
+      allow delete: if isVerifiedUser() && isValidId(recordId) && isRecordOwner();
+    }
+  }
+}

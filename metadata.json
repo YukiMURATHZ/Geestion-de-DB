@@ -1,0 +1,6 @@
+{
+  "name": "NexoDB — Gestor de Base de Datos en Tiempo Real",
+  "description": "Plataforma profesional de gestión de bases de datos en la nube con sincronización en tiempo real, inspector de documentos NoSQL, control de inventario y analítica operativa respaldada por Firebase Firestore.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

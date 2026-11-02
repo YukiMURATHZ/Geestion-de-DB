@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "RecordItem": {
+      "title": "RecordItem",
+      "description": "A structured database record representing an inventory item, client account, project milestone, or financial transaction.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Primary title or name of the record",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "code": {
+          "type": "string",
+          "description": "Alphanumeric reference code (e.g. REG-1042)",
+          "minLength": 1,
+          "maxLength": 32,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "category": {
+          "type": "string",
+          "description": "Operational category of the record",
+          "enum": ["Inventario", "Clientes", "Finanzas", "Proyectos", "Operaciones"]
+        },
+        "status": {
+          "type": "string",
+          "description": "Lifecycle status of the record",
+          "enum": ["Activo", "En Revision", "Completado", "Archivado"]
+        },
+        "priority": {
+          "type": "string",
+          "description": "Priority level of the record",
+          "enum": ["Alta", "Media", "Baja"]
+        },
+        "amount": {
+          "type": "number",
+          "description": "Monetary value or numeric quantity associated with the record"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Detailed notes or specifications",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the record owner",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the record was created"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the record was last modified"
+        }
+      },
+      "required": [
+        "title",
+        "code",
+        "category",
+        "status",
+        "priority",
+        "amount",
+        "notes",
+        "ownerId",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/records/{recordId}": {
+      "schema": {
+        "$ref": "#/entities/RecordItem"
+      },
+      "description": "Collection of user-owned database records"
+    }
+  }
+}
